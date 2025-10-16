@@ -1,19 +1,91 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Bus, MapPin, Bell, Users, Clock, Menu } from "lucide-react";
+import { Bus, MapPin, Bell, Users, Clock, Menu, LogOut } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
-  const [busStatus] = useState({
-    routeNumber: "Route 42",
-    status: "On Route",
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [busInfo, setBusInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    setUser(user);
+
+    // Fetch user profile
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Profile error:', profileError);
+      toast({
+        title: "Error loading profile",
+        description: "Please try refreshing the page.",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    setProfile(profileData);
+
+    // Fetch bus info if user has assigned bus
+    if (profileData.assigned_bus_number) {
+      const { data: busData } = await supabase
+        .from('bus_routes')
+        .select('*')
+        .eq('bus_number', profileData.assigned_bus_number)
+        .single();
+
+      if (busData) {
+        setBusInfo(busData);
+      }
+    }
+
+    setLoading(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  const busStatus = {
+    routeNumber: profile?.assigned_bus_number || "No bus assigned",
+    status: busInfo?.status === 'active' ? "On Route" : "Inactive",
     eta: "8 mins",
-    nextStop: "Main Street",
+    nextStop: "Park Avenue",
     distance: "2.3 km",
-  });
+  };
 
   const quickActions = [
     {
@@ -77,8 +149,13 @@ const Dashboard = () => {
               </Button>
               <Avatar>
                 <AvatarImage src="" />
-                <AvatarFallback className="bg-secondary text-secondary-foreground">JD</AvatarFallback>
+                <AvatarFallback className="bg-secondary text-secondary-foreground">
+                  {profile?.full_name?.charAt(0) || "U"}
+                </AvatarFallback>
               </Avatar>
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <LogOut className="w-5 h-5" />
+              </Button>
             </div>
           </div>
         </div>
@@ -89,7 +166,9 @@ const Dashboard = () => {
         <div className="space-y-8">
           {/* Welcome Section */}
           <div>
-            <h2 className="text-3xl font-bold text-foreground mb-2">Welcome back, John!</h2>
+            <h2 className="text-3xl font-bold text-foreground mb-2">
+              Welcome back, {profile?.full_name?.split(' ')[0] || 'Student'}!
+            </h2>
             <p className="text-muted-foreground">Here's your bus status for today</p>
           </div>
 
@@ -105,7 +184,7 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="flex items-center space-x-2">
                   <Clock className="w-5 h-5 text-primary" />
                   <div>
@@ -121,6 +200,13 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
+              {profile?.assigned_bus_number && (
+                <Link to="/location">
+                  <Button variant="gradient" className="w-full">
+                    Track My Bus
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
 
