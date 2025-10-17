@@ -74,7 +74,7 @@ const Login = () => {
                   <SelectContent className="bg-card z-50">
                     <SelectItem value="student">Student</SelectItem>
                     <SelectItem value="driver">Driver</SelectItem>
-                    <SelectItem value="instructor">Instructor</SelectItem>
+                    <SelectItem value="incharge">Incharge</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

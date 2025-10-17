@@ -6,6 +6,7 @@ import { ArrowLeft, Bus, MapPin, Clock, Navigation, RefreshCw } from "lucide-rea
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import Map from "@/components/Map";
 
 const Location = () => {
   const navigate = useNavigate();
@@ -97,7 +98,7 @@ const Location = () => {
       </header>
 
       {/* Map Container */}
-      <div className="relative h-[60vh] bg-muted">
+      <div className="relative h-[60vh]">
         {/* Refresh Button */}
         <Button
           variant="outline"
@@ -108,52 +109,22 @@ const Location = () => {
           <RefreshCw className="w-5 h-5" />
         </Button>
 
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="relative">
-              {/* User location - blue dot */}
-              <div className="absolute -top-20 left-1/2 -translate-x-1/2">
-                <div className="w-4 h-4 bg-blue-500 rounded-full animate-pulse shadow-lg" />
-                <p className="text-xs mt-1 text-muted-foreground">You</p>
-              </div>
-
-              {/* Bus icon with number */}
-              <div className="bg-primary rounded-xl p-4 shadow-xl inline-block animate-bounce">
-                <Bus className="w-12 h-12 text-primary-foreground" />
-                <span className="absolute -top-2 -right-2 bg-warning text-warning-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold shadow-md">
-                  {busRoute?.bus_number?.split(' ')[1] || '21'}
-                </span>
-              </div>
-
-              {/* Route stops */}
-              <div className="flex justify-center space-x-8 mt-12">
-                {busStops.slice(0, 3).map((stop, index) => (
-                  <div key={stop.id} className="text-center">
-                    <div className={`w-6 h-6 rounded-full ${
-                      stop.is_next_stop 
-                        ? 'bg-success scale-125' 
-                        : 'bg-muted-foreground/30'
-                    } mx-auto shadow-md`} />
-                    <p className={`text-xs mt-2 ${
-                      stop.is_next_stop ? 'font-bold text-success' : 'text-muted-foreground'
-                    }`}>
-                      {stop.stop_name}
-                    </p>
-                    {stop.is_next_stop && (
-                      <p className="text-xs text-success font-semibold mt-1">
-                        ETA: {stop.eta_minutes} min
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <p className="text-muted-foreground text-sm mt-8">
-              Live tracking simulation • Map integration ready
-            </p>
-          </div>
-        </div>
+        <Map 
+          center={busRoute?.current_lat && busRoute?.current_lng ? [busRoute.current_lat, busRoute.current_lng] : [20.5937, 78.9629]}
+          zoom={13}
+          markers={[
+            ...(busRoute?.current_lat && busRoute?.current_lng ? [{
+              position: [busRoute.current_lat, busRoute.current_lng] as [number, number],
+              label: busRoute.bus_number,
+              color: 'primary'
+            }] : []),
+            ...busStops.map(stop => ({
+              position: [stop.stop_lat, stop.stop_lng] as [number, number],
+              label: stop.stop_name,
+              color: stop.is_next_stop ? 'success' : 'muted'
+            }))
+          ]}
+        />
 
         {/* Floating Bus Info Card */}
         <div className="absolute bottom-4 left-4 right-4 max-w-2xl mx-auto">

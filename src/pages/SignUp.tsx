@@ -57,6 +57,7 @@ const SignUp = () => {
       if (authError) throw authError;
 
       if (authData.user) {
+        // Create profile
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -64,11 +65,20 @@ const SignUp = () => {
             full_name: formData.name,
             email: formData.email,
             phone: formData.phone,
-            role: formData.role,
-            assigned_bus_number: 'Bus 21',
+            assigned_bus_number: formData.role === 'student' ? 'Bus 21' : null,
           });
 
         if (profileError) throw profileError;
+
+        // Update role if not student (profile trigger creates student role by default)
+        if (formData.role !== 'student') {
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .update({ role: formData.role as 'driver' | 'incharge' })
+            .eq('user_id', authData.user.id);
+
+          if (roleError) throw roleError;
+        }
       }
 
       toast({
@@ -164,7 +174,7 @@ const SignUp = () => {
                   <SelectContent className="bg-card z-50">
                     <SelectItem value="student">Student</SelectItem>
                     <SelectItem value="driver">Driver</SelectItem>
-                    <SelectItem value="instructor">Instructor</SelectItem>
+                    <SelectItem value="incharge">Incharge</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

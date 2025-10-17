@@ -11,6 +11,9 @@ import Alert from "./pages/Alert";
 import DriverDetails from "./pages/DriverDetails";
 import Nearby from "./pages/Nearby";
 import NotFound from "./pages/NotFound";
+import StudentDashboard from "./pages/StudentDashboard";
+import DriverDashboard from "./pages/DriverDashboard";
+import InchargeDashboard from "./pages/InchargeDashboard";
 
 const queryClient = new QueryClient();
 
