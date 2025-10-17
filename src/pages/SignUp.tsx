@@ -5,13 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bus, Mail, Lock, User, Phone } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import busHero from "@/assets/bus-hero.jpg";
 
 const SignUp = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -20,72 +17,15 @@ const SignUp = () => {
     confirmPassword: "",
     role: "student",
   });
-  const [loading, setLoading] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignUp = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-          data: {
-            full_name: formData.name,
-            phone: formData.phone,
-            role: formData.role,
-          }
-        },
-      });
-
-      if (authError) throw authError;
-
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            full_name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            role: formData.role,
-            assigned_bus_number: 'Bus 21',
-          });
-
-        if (profileError) throw profileError;
-      }
-
-      toast({
-        title: "Account created!",
-        description: "Welcome to BusTrack. Redirecting...",
-      });
-
-      setTimeout(() => navigate("/dashboard"), 1000);
-    } catch (error: any) {
-      toast({
-        title: "Sign up failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    // Simulate signup - in production, this would call an API
+    navigate("/dashboard");
   };
 
   return (
@@ -202,8 +142,8 @@ const SignUp = () => {
               </div>
             </div>
 
-            <Button type="submit" variant="gradient" className="w-full" size="lg" disabled={loading}>
-              {loading ? "Creating account..." : "Create Account"}
+            <Button type="submit" variant="gradient" className="w-full" size="lg">
+              Create Account
             </Button>
           </form>
 

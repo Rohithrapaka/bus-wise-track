@@ -1,84 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Bus, MapPin, Clock, Navigation, RefreshCw } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, Bus, MapPin, Clock, Navigation } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Location = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [profile, setProfile] = useState<any>(null);
-  const [busRoute, setBusRoute] = useState<any>(null);
-  const [busStops, setBusStops] = useState<any[]>([]);
-  const [nextStop, setNextStop] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadBusData();
-  }, []);
-
-  const loadBusData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      navigate("/login");
-      return;
-    }
-
-    // Get user profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    setProfile(profileData);
-
-    if (profileData?.assigned_bus_number) {
-      // Get bus route info
-      const { data: routeData } = await supabase
-        .from('bus_routes')
-        .select('*')
-        .eq('bus_number', profileData.assigned_bus_number)
-        .single();
-
-      setBusRoute(routeData);
-
-      // Get bus stops
-      const { data: stopsData } = await supabase
-        .from('bus_stops')
-        .select('*')
-        .eq('bus_number', profileData.assigned_bus_number)
-        .order('stop_order');
-
-      setBusStops(stopsData || []);
-
-      // Find next stop
-      const next = stopsData?.find((stop: any) => stop.is_next_stop);
-      setNextStop(next);
-    }
-
-    setLoading(false);
-  };
-
-  const refreshData = () => {
-    toast({
-      title: "Refreshing data...",
-      description: "Fetching latest bus location",
-    });
-    loadBusData();
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading bus data...</p>
-      </div>
-    );
-  }
+  const [busInfo] = useState({
+    busNumber: "Route 42",
+    currentStop: "Main Street",
+    nextStop: "Park Avenue",
+    eta: "8 mins",
+    distance: "2.3 km",
+    status: "On Route",
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,60 +33,11 @@ const Location = () => {
 
       {/* Map Container */}
       <div className="relative h-[60vh] bg-muted">
-        {/* Refresh Button */}
-        <Button
-          variant="outline"
-          size="icon"
-          className="absolute top-4 right-4 z-10 bg-background shadow-lg"
-          onClick={refreshData}
-        >
-          <RefreshCw className="w-5 h-5" />
-        </Button>
-
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center space-y-4">
-            <div className="relative">
-              {/* User location - blue dot */}
-              <div className="absolute -top-20 left-1/2 -translate-x-1/2">
-                <div className="w-4 h-4 bg-blue-500 rounded-full animate-pulse shadow-lg" />
-                <p className="text-xs mt-1 text-muted-foreground">You</p>
-              </div>
-
-              {/* Bus icon with number */}
-              <div className="bg-primary rounded-xl p-4 shadow-xl inline-block animate-bounce">
-                <Bus className="w-12 h-12 text-primary-foreground" />
-                <span className="absolute -top-2 -right-2 bg-warning text-warning-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold shadow-md">
-                  {busRoute?.bus_number?.split(' ')[1] || '21'}
-                </span>
-              </div>
-
-              {/* Route stops */}
-              <div className="flex justify-center space-x-8 mt-12">
-                {busStops.slice(0, 3).map((stop, index) => (
-                  <div key={stop.id} className="text-center">
-                    <div className={`w-6 h-6 rounded-full ${
-                      stop.is_next_stop 
-                        ? 'bg-success scale-125' 
-                        : 'bg-muted-foreground/30'
-                    } mx-auto shadow-md`} />
-                    <p className={`text-xs mt-2 ${
-                      stop.is_next_stop ? 'font-bold text-success' : 'text-muted-foreground'
-                    }`}>
-                      {stop.stop_name}
-                    </p>
-                    {stop.is_next_stop && (
-                      <p className="text-xs text-success font-semibold mt-1">
-                        ETA: {stop.eta_minutes} min
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <p className="text-muted-foreground text-sm mt-8">
-              Live tracking simulation • Map integration ready
-            </p>
+            <MapPin className="w-16 h-16 text-secondary mx-auto" />
+            <p className="text-muted-foreground text-lg">Interactive map would display here</p>
+            <p className="text-sm text-muted-foreground">Integration with Google Maps or similar service</p>
           </div>
         </div>
 
@@ -165,15 +51,11 @@ const Location = () => {
                     <Bus className="w-6 h-6 text-primary-foreground" />
                   </div>
                   <div>
-                    <CardTitle>{busRoute?.bus_number}</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Driver: {busRoute?.driver_name || 'Not assigned'}
-                    </p>
+                    <CardTitle>{busInfo.busNumber}</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">Driver: Michael Smith</p>
                   </div>
                 </div>
-                <Badge className="bg-success text-success-foreground">
-                  {busRoute?.status === 'active' ? 'On Route' : 'Inactive'}
-                </Badge>
+                <Badge className="bg-success text-success-foreground">{busInfo.status}</Badge>
               </div>
             </CardHeader>
             <CardContent>
@@ -182,34 +64,28 @@ const Location = () => {
                   <MapPin className="w-5 h-5 text-secondary" />
                   <div>
                     <p className="text-xs text-muted-foreground">Current Stop</p>
-                    <p className="text-sm font-semibold">
-                      {busStops[0]?.stop_name || 'Loading...'}
-                    </p>
+                    <p className="text-sm font-semibold">{busInfo.currentStop}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Navigation className="w-5 h-5 text-primary" />
                   <div>
                     <p className="text-xs text-muted-foreground">Next Stop</p>
-                    <p className="text-sm font-semibold">
-                      {nextStop?.stop_name || 'N/A'}
-                    </p>
+                    <p className="text-sm font-semibold">{busInfo.nextStop}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Clock className="w-5 h-5 text-warning" />
                   <div>
                     <p className="text-xs text-muted-foreground">ETA</p>
-                    <p className="text-sm font-semibold">
-                      {nextStop?.eta_minutes ? `${nextStop.eta_minutes} mins` : 'N/A'}
-                    </p>
+                    <p className="text-sm font-semibold">{busInfo.eta}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <MapPin className="w-5 h-5 text-success" />
                   <div>
                     <p className="text-xs text-muted-foreground">Distance</p>
-                    <p className="text-sm font-semibold">2.3 km</p>
+                    <p className="text-sm font-semibold">{busInfo.distance}</p>
                   </div>
                 </div>
               </div>
