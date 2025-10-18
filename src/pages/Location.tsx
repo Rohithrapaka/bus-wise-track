@@ -16,10 +16,30 @@ const Location = () => {
   const [busStops, setBusStops] = useState<any[]>([]);
   const [nextStop, setNextStop] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
 
   useEffect(() => {
     loadBusData();
+    getUserLocation();
   }, []);
+
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation([position.coords.latitude, position.coords.longitude]);
+        },
+        (error) => {
+          console.error("Error getting user location:", error);
+          toast({
+            title: "Location access denied",
+            description: "Enable location access to see your position",
+            variant: "destructive",
+          });
+        }
+      );
+    }
+  };
 
   const loadBusData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -110,18 +130,23 @@ const Location = () => {
         </Button>
 
         <Map 
-          center={busRoute?.current_lat && busRoute?.current_lng ? [busRoute.current_lat, busRoute.current_lng] : [20.5937, 78.9629]}
+          center={busRoute?.current_lat && busRoute?.current_lng ? [busRoute.current_lat, busRoute.current_lng] : userLocation || [20.5937, 78.9629]}
           zoom={13}
           markers={[
+            ...(userLocation ? [{
+              position: userLocation as [number, number],
+              label: 'Your Location',
+              color: '#10b981'
+            }] : []),
             ...(busRoute?.current_lat && busRoute?.current_lng ? [{
               position: [busRoute.current_lat, busRoute.current_lng] as [number, number],
               label: busRoute.bus_number,
-              color: 'primary'
+              color: '#3b82f6'
             }] : []),
-            ...busStops.map(stop => ({
+            ...busStops.map((stop, index) => ({
               position: [stop.stop_lat, stop.stop_lng] as [number, number],
-              label: stop.stop_name,
-              color: stop.is_next_stop ? 'success' : 'muted'
+              label: `Stop ${index + 1}: ${stop.stop_name}`,
+              color: stop.is_next_stop ? '#22c55e' : '#9ca3af'
             }))
           ]}
         />
@@ -194,45 +219,52 @@ const Location = () => {
         </div>
       </div>
 
-      {/* Bottom Info Section */}
+      {/* Bus Stops List */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="shadow-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="bg-secondary/10 rounded-lg p-2">
-                  <Clock className="w-5 h-5 text-secondary" />
-                </div>
-                <h3 className="font-semibold">Schedule</h3>
+        <Card className="shadow-card">
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <MapPin className="w-5 h-5 text-primary" />
+              <CardTitle>All Stops</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {busStops.length > 0 ? (
+              <div className="space-y-3">
+                {busStops.map((stop, index) => (
+                  <div 
+                    key={stop.id}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                      stop.is_next_stop ? 'bg-success/10 border-success' : 'bg-muted/30 border-border'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
+                        stop.is_next_stop ? 'bg-success text-success-foreground' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-semibold">{stop.stop_name}</p>
+                        {stop.is_next_stop && (
+                          <Badge className="bg-success text-success-foreground mt-1">Next Stop</Badge>
+                        )}
+                      </div>
+                    </div>
+                    {stop.eta_minutes && (
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">ETA</p>
+                        <p className="font-semibold">{stop.eta_minutes} mins</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-              <p className="text-sm text-muted-foreground">View full route schedule and timings</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="bg-primary/10 rounded-lg p-2">
-                  <MapPin className="w-5 h-5 text-primary" />
-                </div>
-                <h3 className="font-semibold">All Stops</h3>
-              </div>
-              <p className="text-sm text-muted-foreground">See all stops along this route</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="bg-success/10 rounded-lg p-2">
-                  <Bus className="w-5 h-5 text-success" />
-                </div>
-                <h3 className="font-semibold">Bus Details</h3>
-              </div>
-              <p className="text-sm text-muted-foreground">Driver info and bus specifications</p>
-            </CardContent>
-          </Card>
-        </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-4">No stops available</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
