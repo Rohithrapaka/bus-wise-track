@@ -70,15 +70,15 @@ const SignUp = () => {
 
         if (profileError) throw profileError;
 
-        // Update role if not student (profile trigger creates student role by default)
-        if (formData.role !== 'student') {
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .update({ role: formData.role as 'driver' | 'incharge' })
-            .eq('user_id', authData.user.id);
+        // Insert user role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role: formData.role as 'student' | 'driver' | 'incharge',
+          });
 
-          if (roleError) throw roleError;
-        }
+        if (roleError) throw roleError;
       }
 
       toast({
