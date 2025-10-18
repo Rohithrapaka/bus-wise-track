@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
+import { useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default marker icons in React-Leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 interface MapProps {
   center?: [number, number];
@@ -16,99 +22,89 @@ interface MapProps {
   onLocationUpdate?: (lat: number, lng: number) => void;
 }
 
-const Map = ({ center = [78.9629, 20.5937], zoom = 5, markers = [], onLocationUpdate }: MapProps) => {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [mapboxToken, setMapboxToken] = useState<string>('');
-  const [tokenInput, setTokenInput] = useState<string>('');
-  const [showTokenInput, setShowTokenInput] = useState(true);
+// Component to handle map events
+function MapEvents({ onLocationUpdate }: { onLocationUpdate?: (lat: number, lng: number) => void }) {
+  const map = useMap();
 
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
-
-    mapboxgl.accessToken = mapboxToken;
-    
-    try {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: center,
-        zoom: zoom,
+    if (onLocationUpdate) {
+      map.on('click', (e) => {
+        onLocationUpdate(e.latlng.lat, e.latlng.lng);
       });
-
-      // Add navigation controls
-      map.current.addControl(
-        new mapboxgl.NavigationControl({
-          visualizePitch: true,
-        }),
-        'top-right'
-      );
-
-      // Add markers
-      markers.forEach(marker => {
-        const el = document.createElement('div');
-        el.className = 'w-8 h-8 bg-primary rounded-full border-4 border-white shadow-lg';
-        
-        new mapboxgl.Marker(el)
-          .setLngLat([marker.position[1], marker.position[0]])
-          .setPopup(new mapboxgl.Popup().setHTML(`<p class="font-semibold">${marker.label}</p>`))
-          .addTo(map.current!);
-      });
-
-      // Click to update location if callback provided
-      if (onLocationUpdate) {
-        map.current.on('click', (e) => {
-          onLocationUpdate(e.lngLat.lat, e.lngLat.lng);
-        });
-      }
-
-      setShowTokenInput(false);
-    } catch (error) {
-      console.error('Map initialization error:', error);
     }
 
     return () => {
-      map.current?.remove();
+      map.off('click');
     };
-  }, [mapboxToken, center, zoom, markers, onLocationUpdate]);
+  }, [map, onLocationUpdate]);
 
-  if (showTokenInput) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full bg-muted rounded-lg p-8 space-y-4">
-        <div className="text-center space-y-2 max-w-md">
-          <h3 className="text-lg font-semibold">Mapbox Token Required</h3>
-          <p className="text-sm text-muted-foreground">
-            To enable the map, please enter your Mapbox public token. You can get one from{' '}
-            <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">
-              mapbox.com
-            </a>
-          </p>
-        </div>
-        <div className="w-full max-w-md space-y-2">
-          <Label htmlFor="mapbox-token">Mapbox Public Token</Label>
-          <Input
-            id="mapbox-token"
-            type="text"
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            placeholder="pk.eyJ1..."
-            className="font-mono text-sm"
-          />
-          <Button 
-            onClick={() => setMapboxToken(tokenInput)} 
-            className="w-full"
-            disabled={!tokenInput}
-          >
-            Load Map
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  return null;
+}
+
+// Component to update map center
+function MapUpdater({ center }: { center: [number, number] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setView(center);
+  }, [center, map]);
+
+  return null;
+}
+
+const Map = ({ center = [20.5937, 78.9629], zoom = 5, markers = [], onLocationUpdate }: MapProps) => {
+  // Create custom marker icons for different colors
+  const createCustomIcon = (color?: string) => {
+    const markerHtmlStyles = `
+      background-color: ${color || '#3b82f6'};
+      width: 2rem;
+      height: 2rem;
+      display: block;
+      left: -1rem;
+      top: -1rem;
+      position: relative;
+      border-radius: 2rem 2rem 0;
+      transform: rotate(45deg);
+      border: 4px solid #fff;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    `;
+
+    return L.divIcon({
+      className: "custom-pin",
+      iconAnchor: [0, 24],
+      popupAnchor: [0, -36],
+      html: `<span style="${markerHtmlStyles}" />`
+    });
+  };
 
   return (
     <div className="relative w-full h-full">
-      <div ref={mapContainer} className="absolute inset-0 rounded-lg" />
+      <MapContainer
+        center={center}
+        zoom={zoom}
+        className="absolute inset-0 rounded-lg z-0"
+        style={{ height: '100%', width: '100%' }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        
+        <MapUpdater center={center} />
+        <MapEvents onLocationUpdate={onLocationUpdate} />
+
+        {markers.map((marker, index) => (
+          <Marker
+            key={index}
+            position={marker.position}
+            icon={createCustomIcon(marker.color)}
+          >
+            <Popup>
+              <p className="font-semibold">{marker.label}</p>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
     </div>
   );
 };
