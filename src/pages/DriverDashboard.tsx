@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bus, MapPin, LogOut, Play, Square, Route } from "lucide-react";
+import { Bus, MapPin, LogOut, Play, Square, Route, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ const DriverDashboard = () => {
   const [busRoute, setBusRoute] = useState<any>(null);
   const [isActive, setIsActive] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<[number, number]>([20.5937, 78.9629]);
+  const [alerts, setAlerts] = useState<any[]>([]);
 
   useEffect(() => {
     loadData();
@@ -49,6 +50,18 @@ const DriverDashboard = () => {
       if (routeData.current_lat && routeData.current_lng) {
         setCurrentLocation([routeData.current_lat, routeData.current_lng]);
       }
+    }
+
+    // Load alerts for this driver
+    const { data: alertsData } = await supabase
+      .from('alerts')
+      .select('*')
+      .eq('driver_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (alertsData) {
+      setAlerts(alertsData);
     }
   };
 
@@ -200,6 +213,42 @@ const DriverDashboard = () => {
                 onLocationUpdate={updateLocation}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card mb-8">
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5 text-warning" />
+              <CardTitle>Student Alerts</CardTitle>
+            </div>
+            <CardDescription>Messages from students</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {alerts.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">No alerts received</p>
+            ) : (
+              <div className="space-y-3">
+                {alerts.map((alert) => (
+                  <div key={alert.id} className="flex justify-between items-start p-4 bg-muted rounded-lg border border-border">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">{alert.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(alert.created_at).toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                    <Badge variant={alert.status === 'read' ? 'secondary' : 'default'} className="ml-3">
+                      {alert.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

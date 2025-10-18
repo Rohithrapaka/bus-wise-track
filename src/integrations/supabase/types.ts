@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      alerts: {
+        Row: {
+          bus_number: string
+          created_at: string
+          driver_id: string
+          id: string
+          message: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          bus_number: string
+          created_at?: string
+          driver_id: string
+          id?: string
+          message: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          bus_number?: string
+          created_at?: string
+          driver_id?: string
+          id?: string
+          message?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bus_routes: {
         Row: {
           bus_number: string
